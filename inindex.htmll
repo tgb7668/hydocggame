@@ -1,318 +1,272 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>융르지마세요</title>
+    <meta charset="UTF-8">
+    <title>융르지마세요 - Mobile</title>
+    <style>
+        /* 기존 스타일 유지 */
+        body { 
+            margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; 
+            background-color: #111; background-image: url('background.png'); 
+            background-size: 100% 100%; background-repeat: no-repeat; background-position: center;
+            font-family: 'Pretendard', sans-serif; color: white;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+        }
 
-<style>
-body {
- margin:0;
- height:100vh;
- display:flex;
- justify-content:center;
- align-items:center;
- background:#111;
- font-family:'Pretendard', sans-serif;
-}
+        .game-wrapper { position: relative; width: 1000px; height: 700px; z-index: 1; }
+        canvas { display: block; background-color: transparent; }
+        
+        #scoreBoard { 
+            position: absolute; top: 25px; left: 25px; font-size: 32px; font-weight: 900; 
+            z-index: 5; display: none; text-shadow: 2px 2px 8px rgba(0,0,0,0.8);
+        }
+        
+        #lobby, #resultBoard {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8); padding: 40px; border-radius: 20px;
+            text-align: center; z-index: 10; backdrop-filter: blur(5px);
+        }
+        
+        #lobby { width: 80%; height: 80%; display: flex; flex-direction: column; justify-content: center; }
+        #lobby h1 { font-size: 80px; color: #ffcf00; margin-bottom: 30px; }
 
-/* 🔥 게임 중앙 */
-.game-container {
- width:100%;
- max-width:1000px;
-}
+        /* 조이스틱 디자인 수정 */
+        .controls {
+            width: 1000px; height: 220px; display: flex; justify-content: center; 
+            align-items: center; background: rgba(0,0,0,0.3); border-radius: 0 0 20px 20px;
+        }
 
-/* 🔥 비율 유지 */
-.game-wrapper {
- width:100%;
- aspect-ratio:1000/700;
- position:relative;
- background-image:url('background.png');
- background-size:cover;
- background-position:center;
-}
+        #joystick-container {
+            width: 160px; height: 160px; border-radius: 50%;
+            border: 3px solid rgba(255, 207, 0, 0.5); /* 가이드 원 추가 */
+            background: rgba(255, 255, 255, 0.05);
+            position: relative; touch-action: none;
+        }
 
-canvas {
- width:100%;
- height:100%;
- display:block;
-}
+        #joystick-knob {
+            width: 70px; height: 70px; background: #ffcf00; border-radius: 50%;
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            box-shadow: 0 0 20px rgba(0,0,0,0.5); pointer-events: none;
+        }
 
-#scoreBoard {
- position:absolute;
- top:10px;
- left:10px;
- color:white;
- display:none;
-}
-
-/* 🔥 조이스틱 */
-.joystick-area {
- position: fixed;
- bottom: 20px;
- left: 50%;
- transform: translateX(-50%);
- width:140px;
- height:140px;
- z-index:9999;
- display:flex;
- justify-content:center;
- align-items:center;
-}
-
-.joystick {
- width:120px;
- height:120px;
- border-radius:50%;
- border:2px solid rgba(255,255,255,0.6);
- background:rgba(0,0,0,0.4);
- position:relative;
-}
-
-.stick {
- width:50px;
- height:50px;
- background:#ffcf00;
- border-radius:50%;
- position:absolute;
- top:35px;
- left:35px;
-}
-</style>
+        .start-btn, .retry-btn {
+            background: #ffcf00; border: none; padding: 20px 60px; cursor: pointer;
+            font-weight: bold; font-size: 30px; border-radius: 50px; color: #000;
+        }
+    </style>
 </head>
-
 <body>
 
-<div class="game-container">
- <div class="game-wrapper">
-  <canvas id="gameCanvas" width="1000" height="700"></canvas>
-  <div id="scoreBoard">SCORE: 0</div>
-  <div id="lobby" style="position:absolute;width:100%;height:100%;display:flex;justify-content:center;align-items:center;background:rgba(0,0,0,0.5);">
-    <button onclick="startGame()">START</button>
-  </div>
- </div>
-</div>
+    <div class="game-wrapper">
+        <canvas id="gameCanvas" width="1000" height="700"></canvas>
+        <div id="scoreBoard">SCORE: 0</div>
 
-<div class="joystick-area">
- <div class="joystick" id="joystick">
-  <div class="stick" id="stick"></div>
- </div>
-</div>
+        <div id="lobby">
+            <h1>융르지마세욧</h1>
+            <button class="start-btn" onclick="startGame()">START</button>
+        </div>
 
-<audio id="bgm" src="bgm.mp3" loop></audio>
-<audio id="hitSound" src="hit.mp3"></audio>
+        <div id="resultBoard" style="display:none;">
+            <h2 style="color: #ffcf00; font-size: 45px;">GAME OVER</h2>
+            <p id="finalScoreTxt" style="font-size: 24px;"></p>
+            <button class="retry-btn" onclick="location.reload()">RETRY</button>
+        </div>
+    </div>
 
-<script>
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
+    <div class="controls">
+        <div id="joystick-container">
+            <div id="joystick-knob"></div>
+        </div>
+    </div>
 
-const joystick = document.getElementById('joystick');
-const stick = document.getElementById('stick');
+    <audio id="bgm" src="bgm.mp3" loop></audio>
+    <audio id="hitSound" src="hit.mp3"></audio>
 
-const bgm = document.getElementById('bgm');
-const hitSound = document.getElementById('hitSound');
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreBoard = document.getElementById('scoreBoard');
+        const lobby = document.getElementById('lobby');
+        const resultBoard = document.getElementById('resultBoard');
+        const bgm = document.getElementById('bgm');
+        const hitSound = document.getElementById('hitSound');
 
-/* 🔥 이미지 */
-const imgs = {
- player:new Image(),
- normal:new Image(),
- homing:new Image(),
- giant:new Image(),
- teleport:new Image()
-};
+        const GAS_URL = "YOUR_GAS_URL_HERE";
 
-imgs.player.src='player.png';
-imgs.normal.src='enemy_normal.png';
-imgs.homing.src='enemy_homing.png';
-imgs.giant.src='enemy_giant.png';
-imgs.teleport.src='enemy_teleport.png';
+        const imgs = { player: new Image(), normal: new Image(), homing: new Image(), giant: new Image(), teleport: new Image() };
+        imgs.player.src = 'player.png';
+        imgs.normal.src = 'enemy_normal.png';
+        imgs.homing.src = 'enemy_homing.png';
+        imgs.giant.src = 'enemy_giant.png';
+        imgs.teleport.src = 'enemy_teleport.png';
 
-const status={};
-Object.keys(imgs).forEach(k=>{
- status[k]=false;
- imgs[k].onload=()=>status[k]=true;
-});
+        const status = { player: false, normal: false, homing: false, giant: false, teleport: false };
+        Object.keys(imgs).forEach(k => imgs[k].onload = () => status[k] = true);
 
-/* 🔥 상태 */
-const player={x:500,y:350,radius:28,speed:6,init:false};
-let enemies=[],particles=[];
-let joyDX=0,joyDY=0;
-let gameOver=false,isStarted=false,score=0;
+        const player = { x: 500, y: 350, radius: 28, speed: 6.2, invincible: false };
+        let enemies = [], score = 0, gameOver = false, isStarted = false, keys = {};
+        const MAX_ENEMIES = 30;
 
-function startGame(){
- isStarted=true;
- document.getElementById('lobby').style.display='none';
- document.getElementById('scoreBoard').style.display='block';
- try{bgm.play();}catch(e){}
- animate();
-}
+        // 조이스틱 데이터
+        let joystick = { x: 0, y: 0, active: false };
+        const knob = document.getElementById('joystick-knob');
+        const container = document.getElementById('joystick-container');
+        const limit = 80; // 조이스틱 반지름 (160/2)
 
-/* 🔥 조이스틱 */
-joystick.addEventListener('touchmove',e=>{
- e.preventDefault();
- const rect=joystick.getBoundingClientRect();
- const t=e.touches[0];
+        container.addEventListener('touchstart', (e) => { joystick.active = true; handleJoystick(e); });
+        window.addEventListener('touchmove', (e) => { if (joystick.active) handleJoystick(e); });
+        window.addEventListener('touchend', () => {
+            joystick.active = false; joystick.x = 0; joystick.y = 0;
+            knob.style.transform = `translate(-50%, -50%)`;
+        });
 
- let x=t.clientX-rect.left-60;
- let y=t.clientY-rect.top-60;
+        function handleJoystick(e) {
+            const touch = e.touches[0];
+            const rect = container.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            
+            let dx = touch.clientX - centerX;
+            let dy = touch.clientY - centerY;
+            const distance = Math.sqrt(dx*dx + dy*dy);
 
- const dist=Math.hypot(x,y);
- const max=50;
+            if (distance > limit) {
+                dx = (dx / distance) * limit;
+                dy = (dy / distance) * limit;
+            }
 
- if(dist>max){
-  x=x/dist*max;
-  y=y/dist*max;
- }
+            // 정규화된 값 (0~1 사이)
+            joystick.x = dx / limit;
+            joystick.y = dy / limit;
 
- stick.style.left=(x+60-25)+'px';
- stick.style.top=(y+60-25)+'px';
+            knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+        }
 
- joyDX=x/max;
- joyDY=y/max;
-},{passive:false});
+        window.addEventListener('keydown', e => keys[e.code] = true);
+        window.addEventListener('keyup', e => keys[e.code] = false);
 
-joystick.addEventListener('touchend',()=>{
- joyDX=0;
- joyDY=0;
- stick.style.left='35px';
- stick.style.top='35px';
-});
+        function startGame() {
+            isStarted = true;
+            lobby.style.display = 'none';
+            scoreBoard.style.display = 'block';
+            try { bgm.play(); } catch(e) {}
+            player.invincible = true;
+            setTimeout(() => player.invincible = false, 1500);
+            animate();
+        }
 
-/* 🔥 적 생성 */
-function spawnEnemy(){
- const types=['normal','homing','giant','teleport'];
- const type=types[Math.floor(Math.random()*4)];
+        function spawnEnemy() {
+            if (enemies.length >= MAX_ENEMIES) return;
+            const side = Math.floor(Math.random() * 4);
+            let x, y;
+            if (side === 0) { x = Math.random() * 1000; y = -100; }
+            else if (side === 1) { x = Math.random() * 1000; y = 800; }
+            else if (side === 2) { x = -100; y = Math.random() * 700; }
+            else { x = 1100; y = Math.random() * 700; }
 
- let x=Math.random()*1000;
- let y=Math.random()*700;
+            const angle = Math.atan2(player.y - y, player.x - x);
+            const baseSpeed = 1.3 + (score / 300); 
+            let type = 'normal', radius = 24, speed = baseSpeed + Math.random() * 1.5, color = '#ff4d4d';
 
- const angle=Math.atan2(player.y-y,player.x-x);
+            const rand = Math.random();
+            if (score >= 1500 && rand < 0.12) {
+                type = 'teleport'; x = player.x + Math.cos(Math.random()*6)*400; y = player.y + Math.sin(Math.random()*6)*400;
+                speed = baseSpeed * 0.45; color = '#00ffff';
+            } else if (score >= 1000 && rand < 0.18) {
+                type = 'giant'; radius = 55; speed = baseSpeed * 0.55; color = '#ff00ff';
+            } else if (score >= 500 && rand < 0.22) {
+                type = 'homing'; speed = baseSpeed * 0.95; color = '#ffa500';
+            }
+            enemies.push({ x, y, vx: Math.cos(angle)*speed, vy: Math.sin(angle)*speed, radius, type, speed, color, isHomingActive: true });
+        }
 
- let speed=2+Math.random()*2;
- let radius=20;
+        function update() {
+            if (gameOver || !isStarted) return;
 
- if(type==='giant'){radius=50; speed*=0.6;}
+            let moveX = 0;
+            let moveY = 0;
 
- enemies.push({
-  x,y,
-  vx:Math.cos(angle)*speed,
-  vy:Math.sin(angle)*speed,
-  radius,type
- });
-}
+            // 키보드 입력 체크
+            if (keys['ArrowUp']) moveY -= 1;
+            if (keys['ArrowDown']) moveY += 1;
+            if (keys['ArrowLeft']) moveX -= 1;
+            if (keys['ArrowRight']) moveX += 1;
 
-/* 🔥 업데이트 */
-function update(){
+            // 조이스틱 입력 합산
+            if (joystick.active) {
+                moveX = joystick.x;
+                moveY = joystick.y;
+            }
 
- if(!player.init){
-  player.x=canvas.width/2;
-  player.y=canvas.height/2;
-  player.init=true;
- }
+            // 대각선 속도 보정 (정규화)
+            const mag = Math.sqrt(moveX * moveX + moveY * moveY);
+            if (mag > 0) {
+                // 입력 강도가 1을 넘지 않도록 조정하면서 방향 유지
+                moveX /= mag;
+                moveY /= mag;
+                
+                // 실제 이동
+                player.x += moveX * player.speed;
+                player.y += moveY * player.speed;
+            }
 
- if(!isStarted||gameOver) return;
+            // 화면 경계 제한
+            player.x = Math.max(player.radius, Math.min(1000 - player.radius, player.x));
+            player.y = Math.max(player.radius, Math.min(700 - player.radius, player.y));
 
- let dx=joyDX, dy=joyDY;
- const len=Math.hypot(dx,dy);
- if(len>0){dx/=len; dy/=len;}
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const e = enemies[i];
+                const dist = Math.sqrt((player.x-e.x)**2 + (player.y-e.y)**2);
+                if (e.type === 'homing' && e.isHomingActive) {
+                    if (dist > 250) {
+                        const targetAngle = Math.atan2(player.y-e.y, player.x-e.x);
+                        e.vx = Math.cos(targetAngle)*e.speed; e.vy = Math.sin(targetAngle)*e.speed;
+                    } else e.isHomingActive = false;
+                }
+                e.x += e.vx; e.y += e.vy;
+                if (!player.invincible && dist < (player.radius + e.radius - 6)) {
+                    hitSound.currentTime = 0;
+                    hitSound.play();
+                    bgm.pause();
+                    gameOver = true;
+                    document.getElementById('finalScoreTxt').innerText = `SCORE: ${Math.floor(score)}`;
+                    resultBoard.style.display = "block";
+                    scoreBoard.style.display = "none";
+                    return;
+                }
+                if (e.x < -600 || e.x > 1600 || e.y < -600 || e.y > 1300) enemies.splice(i, 1);
+            }
+            score += 0.05;
+            scoreBoard.innerText = `SCORE: ${Math.floor(score)}`;
+            if (Math.random() < 0.04 + (score/10000)) spawnEnemy();
+        }
 
- player.x+=dx*player.speed;
- player.y+=dy*player.speed;
+        function animate() {
+            if (gameOver) return;
+            ctx.clearRect(0, 0, 1000, 700);
+            enemies.forEach(e => {
+                ctx.save();
+                ctx.beginPath(); ctx.arc(e.x, e.y, e.radius, 0, Math.PI*2); ctx.clip();
+                if (status[e.type]) {
+                    const sz = e.radius * 2.4;
+                    ctx.drawImage(imgs[e.type], e.x - sz/2, e.y - sz/2, sz, sz);
+                } else { ctx.fillStyle = e.color; ctx.fill(); }
+                if (e.type !== 'normal') { ctx.strokeStyle = e.color; ctx.lineWidth = 5; ctx.stroke(); }
+                ctx.restore();
+            });
 
- player.x=Math.max(player.radius,Math.min(1000-player.radius,player.x));
- player.y=Math.max(player.radius,Math.min(700-player.radius,player.y));
+            ctx.save();
+            if (player.invincible && Math.floor(Date.now()/100)%2===0) ctx.globalAlpha = 0.3;
+            ctx.beginPath(); ctx.arc(player.x, player.y, player.radius, 0, Math.PI*2); ctx.clip();
+            if (status.player) {
+                const sz = player.radius * 2.4;
+                ctx.drawImage(imgs.player, player.x - sz/2, player.y - sz/2, sz, sz);
+            } else { ctx.fillStyle = '#ffcf00'; ctx.fill(); }
+            ctx.restore();
 
- enemies.forEach(e=>{
-  e.x+=e.vx;
-  e.y+=e.vy;
-
-  const d=Math.hypot(player.x-e.x,player.y-e.y);
-
-  if(d<player.radius+e.radius){
-   hitSound.currentTime=0;
-   hitSound.play();
-
-   for(let i=0;i<25;i++){
-    const a=Math.random()*Math.PI*2;
-    const s=Math.random()*4;
-    particles.push({
-     x:player.x,y:player.y,
-     vx:Math.cos(a)*s,
-     vy:Math.sin(a)*s,
-     life:30
-    });
-   }
-
-   gameOver=true;
-  }
- });
-
- particles.forEach((p,i)=>{
-  p.x+=p.vx;
-  p.y+=p.vy;
-  p.vx*=0.95;
-  p.vy*=0.95;
-  p.life--;
-  if(p.life<=0) particles.splice(i,1);
- });
-
- score+=0.1;
- document.getElementById('scoreBoard').innerText='SCORE: '+Math.floor(score);
-
- if(Math.random()<0.03) spawnEnemy();
-}
-
-/* 🔥 렌더 */
-function draw(){
- ctx.clearRect(0,0,1000,700);
-
- enemies.forEach(e=>{
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(e.x,e.y,e.radius,0,Math.PI*2);
-  ctx.clip();
-
-  if(status[e.type]){
-   const sz=e.radius*2.4;
-   ctx.drawImage(imgs[e.type],e.x-sz/2,e.y-sz/2,sz,sz);
-  } else {
-   ctx.fillStyle='red';
-   ctx.fill();
-  }
-
-  ctx.restore();
- });
-
- ctx.save();
- ctx.beginPath();
- ctx.arc(player.x,player.y,player.radius,0,Math.PI*2);
- ctx.clip();
-
- if(status.player){
-  const sz=player.radius*2.4;
-  ctx.drawImage(imgs.player,player.x-sz/2,player.y-sz/2,sz,sz);
- } else {
-  ctx.fillStyle='yellow';
-  ctx.fill();
- }
-
- ctx.restore();
-
- particles.forEach(p=>{
-  ctx.beginPath();
-  ctx.arc(p.x,p.y,3,0,Math.PI*2);
-  ctx.fillStyle='orange';
-  ctx.fill();
- });
-}
-
-function animate(){
- if(gameOver) return;
- update();
- draw();
- requestAnimationFrame(animate);
-}
-</script>
-
+            update();
+            requestAnimationFrame(animate);
+        }
+    </script>
 </body>
 </html>
