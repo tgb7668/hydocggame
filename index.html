@@ -2,15 +2,15 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>융르지마세요 - Mobile</title>
+    <title>융르지마세요 - Mouse & Touch</title>
     <style>
-        /* 기존 스타일 유지 */
         body { 
             margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; 
             background-color: #111; background-image: url('background.png'); 
             background-size: 100% 100%; background-repeat: no-repeat; background-position: center;
             font-family: 'Pretendard', sans-serif; color: white;
             display: flex; flex-direction: column; justify-content: center; align-items: center;
+            user-select: none; /* 텍스트 선택 방지 */
         }
 
         .game-wrapper { position: relative; width: 1000px; height: 700px; z-index: 1; }
@@ -30,7 +30,6 @@
         #lobby { width: 80%; height: 80%; display: flex; flex-direction: column; justify-content: center; }
         #lobby h1 { font-size: 80px; color: #ffcf00; margin-bottom: 30px; }
 
-        /* 조이스틱 디자인 수정 */
         .controls {
             width: 1000px; height: 220px; display: flex; justify-content: center; 
             align-items: center; background: rgba(0,0,0,0.3); border-radius: 0 0 20px 20px;
@@ -38,9 +37,10 @@
 
         #joystick-container {
             width: 160px; height: 160px; border-radius: 50%;
-            border: 3px solid rgba(255, 207, 0, 0.5); /* 가이드 원 추가 */
+            border: 3px solid rgba(255, 207, 0, 0.5);
             background: rgba(255, 255, 255, 0.05);
             position: relative; touch-action: none;
+            cursor: pointer;
         }
 
         #joystick-knob {
@@ -107,27 +107,21 @@
         let enemies = [], score = 0, gameOver = false, isStarted = false, keys = {};
         const MAX_ENEMIES = 30;
 
-        // 조이스틱 데이터
+        // --- 조이스틱 변수 및 마우스 컨트롤 추가 ---
         let joystick = { x: 0, y: 0, active: false };
         const knob = document.getElementById('joystick-knob');
         const container = document.getElementById('joystick-container');
-        const limit = 80; // 조이스틱 반지름 (160/2)
+        const limit = 80; 
+        const JOYSTICK_SENSITIVITY = 0.7; // 조이스틱 속도 감도 (0~1 사이로 조절)
 
-        container.addEventListener('touchstart', (e) => { joystick.active = true; handleJoystick(e); });
-        window.addEventListener('touchmove', (e) => { if (joystick.active) handleJoystick(e); });
-        window.addEventListener('touchend', () => {
-            joystick.active = false; joystick.x = 0; joystick.y = 0;
-            knob.style.transform = `translate(-50%, -50%)`;
-        });
-
-        function handleJoystick(e) {
-            const touch = e.touches[0];
+        // 마우스/터치 통합 이벤트 처리 함수
+        function moveJoystick(clientX, clientY) {
             const rect = container.getBoundingClientRect();
             const centerX = rect.left + rect.width / 2;
             const centerY = rect.top + rect.height / 2;
             
-            let dx = touch.clientX - centerX;
-            let dy = touch.clientY - centerY;
+            let dx = clientX - centerX;
+            let dy = clientY - centerY;
             const distance = Math.sqrt(dx*dx + dy*dy);
 
             if (distance > limit) {
@@ -135,12 +129,28 @@
                 dy = (dy / distance) * limit;
             }
 
-            // 정규화된 값 (0~1 사이)
-            joystick.x = dx / limit;
-            joystick.y = dy / limit;
+            // 감도를 곱해 입력값 세기 조절
+            joystick.x = (dx / limit) * JOYSTICK_SENSITIVITY;
+            joystick.y = (dy / limit) * JOYSTICK_SENSITIVITY;
 
             knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
         }
+
+        // 터치 이벤트
+        container.addEventListener('touchstart', (e) => { joystick.active = true; moveJoystick(e.touches[0].clientX, e.touches[0].clientY); });
+        window.addEventListener('touchmove', (e) => { if (joystick.active) moveJoystick(e.touches[0].clientX, e.touches[0].clientY); });
+        window.addEventListener('touchend', () => { joystick.active = false; resetJoystick(); });
+
+        // 마우스 이벤트 추가
+        container.addEventListener('mousedown', (e) => { joystick.active = true; moveJoystick(e.clientX, e.clientY); });
+        window.addEventListener('mousemove', (e) => { if (joystick.active) moveJoystick(e.clientX, e.clientY); });
+        window.addEventListener('mouseup', () => { joystick.active = false; resetJoystick(); });
+
+        function resetJoystick() {
+            joystick.x = 0; joystick.y = 0;
+            knob.style.transform = `translate(-50%, -50%)`;
+        }
+        // ------------------------------------------
 
         window.addEventListener('keydown', e => keys[e.code] = true);
         window.addEventListener('keyup', e => keys[e.code] = false);
@@ -186,31 +196,27 @@
             let moveX = 0;
             let moveY = 0;
 
-            // 키보드 입력 체크
             if (keys['ArrowUp']) moveY -= 1;
             if (keys['ArrowDown']) moveY += 1;
             if (keys['ArrowLeft']) moveX -= 1;
             if (keys['ArrowRight']) moveX += 1;
 
-            // 조이스틱 입력 합산
             if (joystick.active) {
                 moveX = joystick.x;
                 moveY = joystick.y;
             }
 
-            // 대각선 속도 보정 (정규화)
             const mag = Math.sqrt(moveX * moveX + moveY * moveY);
             if (mag > 0) {
-                // 입력 강도가 1을 넘지 않도록 조정하면서 방향 유지
-                moveX /= mag;
-                moveY /= mag;
-                
-                // 실제 이동
+                // mag가 JOYSTICK_SENSITIVITY보다 클 때만 정규화하여 최대 속도 제한
+                if (mag > 1) {
+                    moveX /= mag;
+                    moveY /= mag;
+                }
                 player.x += moveX * player.speed;
                 player.y += moveY * player.speed;
             }
 
-            // 화면 경계 제한
             player.x = Math.max(player.radius, Math.min(1000 - player.radius, player.x));
             player.y = Math.max(player.radius, Math.min(700 - player.radius, player.y));
 
