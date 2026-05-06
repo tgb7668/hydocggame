@@ -51,7 +51,7 @@ const scoreBoard = document.getElementById('scoreBoard');
 const lobby = document.getElementById('lobby');
 const resultBoard = document.getElementById('resultBoard');
 
-const player = { x:500, y:350, radius:28, speed:6 };
+const player = { x:500, y:350, radius:28, speed:6, initialized:false };
 let enemies=[], score=0, gameOver=false, isStarted=false;
 
 let joyDX=0, joyDY=0;
@@ -60,8 +60,6 @@ function startGame(){
  isStarted=true;
  lobby.style.display='none';
  scoreBoard.style.display='block';
- player.x = 500; // 🔥 중앙 시작
- player.y = 350;
  animate();
 }
 
@@ -94,14 +92,20 @@ function spawnEnemy(){
 }
 
 function update(){
+ if(!player.initialized){
+   player.x = canvas.width / 2;
+   player.y = canvas.height / 2;
+   player.initialized = true;
+ }
  if(gameOver||!isStarted) return;
 
  let dx=joyDX, dy=joyDY;
  const len=Math.hypot(dx,dy);
  if(len>0){ dx/=len; dy/=len; }
 
- player.x += dx * player.speed * 3.5;
- player.y += dy * player.speed * 3.5;
+ // 🔥 속도 통일 (키보드 기준으로 맞춤)
+player.x += dx * player.speed;
+player.y += dy * player.speed;
 
  player.x = Math.max(player.radius, Math.min(1000-player.radius, player.x));
  player.y = Math.max(player.radius, Math.min(700-player.radius, player.y));
