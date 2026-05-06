@@ -39,6 +39,7 @@
             width: 160px; height: 160px; border-radius: 50%;
             border: 3px solid rgba(255, 207, 0, 0.5);
             background: rgba(255, 255, 255, 0.05);
+        
             position: relative; touch-action: none;
             cursor: pointer;
         }
@@ -112,7 +113,7 @@
         const knob = document.getElementById('joystick-knob');
         const container = document.getElementById('joystick-container');
         const limit = 80; 
-        const JOYSTICK_SENSITIVITY = 0.7; // 조이스틱 속도 감도 (0~1 사이로 조절)
+        const JOYSTICK_SENSITIVITY = 0.5; // 조이스틱 속도 감도 (0~1 사이로 조절)
 
         // 마우스/터치 통합 이벤트 처리 함수
         function moveJoystick(clientX, clientY) {
