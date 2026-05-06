@@ -4,67 +4,62 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>융르지마세요</title>
 <style>
-body {
- margin:0; padding:0; background:#111;
- font-family:'Pretendard', sans-serif;
- display:flex; flex-direction:column; align-items:center; justify-content:center;
- height:100vh; overflow:hidden;
-}.game-wrapper { width:100vw; max-width:1000px; aspect-ratio: 1000 / 700; position:relative; }
+body { margin:0; padding:0; background:#111;
+background-image:url('background.png'); background-size:cover; background-position:center;
+font-family:'Pretendard', sans-serif; display:flex; flex-direction:column; align-items:center; }.game-wrapper { width:100vw; max-width:1000px; aspect-ratio:1000/700; position:relative; } canvas { width:100%; height:100%; display:block; }
 
-canvas { width:100%; height:100%; display:block; background:transparent; }
+#scoreBoard { position:absolute; top:10px; left:10px; color:white; font-size:18px; display:none; } #lobby { position:absolute; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; justify-content:center; align-items:center; flex-direction:column; }
 
-#scoreBoard { position:absolute; top:10px; left:10px; font-size:20px; font-weight:bold; display:none; }
-
-#lobby { position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; flex-direction:column; align-items:center; justify-content:center; }
-
-.start-btn { padding:15px 40px; font-size:20px; }
-
-#resultBoard { display:none; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.9); padding:20px; border-radius:15px; }
-
-/* 🔥 조이스틱 중앙 고정 */ .joystick-area { width:100%; height:140px; display:flex; justify-content:center; align-items:center; }
-
-.joystick { width:120px; height:120px; border-radius:50%; border:2px solid rgba(255,255,255,0.3); position:relative; touch-action:none; }
-
-.stick { width:50px; height:50px; background:#ffcf00; border-radius:50%; position:absolute; top:35px; left:35px; } </style>
+.joystick-area { width:100%; height:140px; display:flex; justify-content:center; align-items:center; } .joystick { width:120px; height:120px; border:2px solid rgba(255,255,255,0.3); border-radius:50%; position:relative; } .stick { width:50px; height:50px; background:#ffcf00; border-radius:50%; position:absolute; top:35px; left:35px; } </style>
 
 </head>
 <body><div class="game-wrapper">
- <canvas id="gameCanvas" width="1000" height="700"></canvas>
- <div id="scoreBoard">SCORE: 0</div> <div id="lobby">
-  <h1>융르지마세요</h1>
-  <button class="start-btn" onclick="startGame()">START</button>
- </div> <div id="resultBoard">
-  <h2>GAME OVER</h2>
-  <p id="finalScoreTxt"></p>
-  <button onclick="location.reload()">RETRY</button>
- </div>
+<canvas id="gameCanvas" width="1000" height="700"></canvas>
+<div id="scoreBoard">SCORE: 0</div>
+<div id="lobby"><button onclick="startGame()">START</button></div>
 </div><div class="joystick-area">
- <div class="joystick" id="joystick">
-  <div class="stick" id="stick"></div>
- </div>
-</div><script>
+ <div class="joystick" id="joystick"><div class="stick" id="stick"></div></div>
+</div><audio id="bgm" src="bgm.mp3" loop></audio> <audio id="hitSound" src="hit.mp3"></audio>
+
+<script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const joystick = document.getElementById('joystick');
 const stick = document.getElementById('stick');
-const scoreBoard = document.getElementById('scoreBoard');
-const lobby = document.getElementById('lobby');
-const resultBoard = document.getElementById('resultBoard');
+const bgm = document.getElementById('bgm');
+const hitSound = document.getElementById('hitSound');
 
-const player = { x:500, y:350, radius:28, speed:6, initialized:false };
-let enemies=[], score=0, gameOver=false, isStarted=false;
+// 🔥 이미지 로딩
+const imgs = {
+ player:new Image(),
+ normal:new Image(),
+ homing:new Image(),
+ giant:new Image(),
+ teleport:new Image()
+};
+imgs.player.src='player.png';
+imgs.normal.src='enemy_normal.png';
+imgs.homing.src='enemy_homing.png';
+imgs.giant.src='enemy_giant.png';
+imgs.teleport.src='enemy_teleport.png';
 
-let joyDX=0, joyDY=0;
+const status={player:false,normal:false,homing:false,giant:false,teleport:false};
+Object.keys(imgs).forEach(k=>imgs[k].onload=()=>status[k]=true);
+
+const player={x:500,y:350,radius:28,speed:6,initialized:false};
+let enemies=[],particles=[],isStarted=false,gameOver=false,score=0;
+let joyDX=0,joyDY=0;
 
 function startGame(){
  isStarted=true;
- lobby.style.display='none';
- scoreBoard.style.display='block';
+ document.getElementById('lobby').style.display='none';
+ document.getElementById('scoreBoard').style.display='block';
+ try{bgm.play();}catch(e){}
  animate();
 }
 
-// 🔥 조이스틱
-joystick.addEventListener('touchmove', e=>{
+// 조이스틱
+joystick.addEventListener('touchmove',e=>{
  e.preventDefault();
  const rect=joystick.getBoundingClientRect();
  const t=e.touches[0];
@@ -72,64 +67,89 @@ joystick.addEventListener('touchmove', e=>{
  let y=t.clientY-rect.top-60;
  const dist=Math.hypot(x,y);
  const max=50;
- if(dist>max){ x=x/dist*max; y=y/dist*max; }
+ if(dist>max){x=x/dist*max;y=y/dist*max;}
  stick.style.left=(x+60-25)+'px';
  stick.style.top=(y+60-25)+'px';
  joyDX=x/max; joyDY=y/max;
 },{passive:false});
 
-joystick.addEventListener('touchend', ()=>{
+joystick.addEventListener('touchend',()=>{
  joyDX=0; joyDY=0;
  stick.style.left='35px'; stick.style.top='35px';
 });
 
 function spawnEnemy(){
- const x = Math.random()*1000;
- const y = Math.random()*700;
- const angle = Math.atan2(player.y-y, player.x-x);
- const speed = 2 + Math.random()*2;
- enemies.push({ x,y, vx:Math.cos(angle)*speed, vy:Math.sin(angle)*speed, radius:20 });
+ const types=['normal','homing','giant','teleport'];
+ const type=types[Math.floor(Math.random()*4)];
+ const x=Math.random()*1000;
+ const y=Math.random()*700;
+ const angle=Math.atan2(player.y-y,player.x-x);
+ let speed=2+Math.random()*2;
+ let radius=20;
+ if(type==='giant'){radius=50; speed*=0.6;}
+ enemies.push({x,y,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,radius,type,speed});
 }
 
 function update(){
- if(!player.initialized){
-   player.x = canvas.width / 2;
-   player.y = canvas.height / 2;
-   player.initialized = true;
- }
- if(gameOver||!isStarted) return;
+ if(!player.initialized){player.x=500;player.y=350;player.initialized=true;}
+ if(!isStarted||gameOver) return;
 
  let dx=joyDX, dy=joyDY;
  const len=Math.hypot(dx,dy);
- if(len>0){ dx/=len; dy/=len; }
+ if(len>0){dx/=len; dy/=len;}
 
- // 🔥 속도 통일 (키보드 기준으로 맞춤)
-player.x += dx * player.speed;
-player.y += dy * player.speed;
+ player.x+=dx*player.speed;
+ player.y+=dy*player.speed;
 
- player.x = Math.max(player.radius, Math.min(1000-player.radius, player.x));
- player.y = Math.max(player.radius, Math.min(700-player.radius, player.y));
+ player.x=Math.max(player.radius,Math.min(1000-player.radius,player.x));
+ player.y=Math.max(player.radius,Math.min(700-player.radius,player.y));
 
  enemies.forEach(e=>{
   e.x+=e.vx; e.y+=e.vy;
-  const d=Math.hypot(player.x-e.x, player.y-e.y);
-  if(d < player.radius + e.radius){ gameOver=true; resultBoard.style.display='block'; }
+  const d=Math.hypot(player.x-e.x,player.y-e.y);
+  if(d<player.radius+e.radius){
+    hitSound.currentTime=0; hitSound.play();
+    for(let i=0;i<25;i++){
+      const a=Math.random()*Math.PI*2;
+      const s=Math.random()*4;
+      particles.push({x:player.x,y:player.y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:30});
+    }
+    gameOver=true;
+  }
+ });
+
+ particles.forEach((p,i)=>{
+  p.x+=p.vx; p.y+=p.vy; p.vx*=0.95; p.vy*=0.95; p.life--;
+  if(p.life<=0) particles.splice(i,1);
  });
 
  score+=0.1;
- scoreBoard.innerText='SCORE: '+Math.floor(score);
+ document.getElementById('scoreBoard').innerText='SCORE: '+Math.floor(score);
  if(Math.random()<0.03) spawnEnemy();
 }
 
 function draw(){
  ctx.clearRect(0,0,1000,700);
 
- ctx.beginPath(); ctx.arc(player.x,player.y,player.radius,0,Math.PI*2);
- ctx.fillStyle='#ffcf00'; ctx.fill();
-
  enemies.forEach(e=>{
-  ctx.beginPath(); ctx.arc(e.x,e.y,e.radius,0,Math.PI*2);
-  ctx.fillStyle='#ff4d4d'; ctx.fill();
+  ctx.save(); ctx.beginPath(); ctx.arc(e.x,e.y,e.radius,0,Math.PI*2); ctx.clip();
+  if(status[e.type]){
+    const sz=e.radius*2.4;
+    ctx.drawImage(imgs[e.type],e.x-sz/2,e.y-sz/2,sz,sz);
+  } else { ctx.fillStyle='red'; ctx.fill(); }
+  ctx.restore();
+ });
+
+ ctx.save(); ctx.beginPath(); ctx.arc(player.x,player.y,player.radius,0,Math.PI*2); ctx.clip();
+ if(status.player){
+  const sz=player.radius*2.4;
+  ctx.drawImage(imgs.player,player.x-sz/2,player.y-sz/2,sz,sz);
+ } else { ctx.fillStyle='yellow'; ctx.fill(); }
+ ctx.restore();
+
+ particles.forEach(p=>{
+  ctx.beginPath(); ctx.arc(p.x,p.y,3,0,Math.PI*2);
+  ctx.fillStyle='orange'; ctx.fill();
  });
 }
 
