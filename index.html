@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>융르지마세요 - Mouse & Touch</title>
+    <title>융르지마세융</title>
     <style>
         body { 
             margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; 
@@ -10,7 +10,7 @@
             background-size: 100% 100%; background-repeat: no-repeat; background-position: center;
             font-family: 'Pretendard', sans-serif; color: white;
             display: flex; flex-direction: column; justify-content: center; align-items: center;
-            user-select: none; /* 텍스트 선택 방지 */
+            user-select: none;
         }
 
         .game-wrapper { position: relative; width: 1000px; height: 700px; z-index: 1; }
@@ -21,14 +21,31 @@
             z-index: 5; display: none; text-shadow: 2px 2px 8px rgba(0,0,0,0.8);
         }
         
-        #lobby, #resultBoard {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.8); padding: 40px; border-radius: 20px;
-            text-align: center; z-index: 10; backdrop-filter: blur(5px);
+        /* 로비 디자인 복구 */
+        #lobby {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.5); display: flex; flex-direction: column;
+            align-items: center; justify-content: center; z-index: 10;
+            border-radius: 20px; backdrop-filter: blur(5px);
         }
-        
-        #lobby { width: 80%; height: 80%; display: flex; flex-direction: column; justify-content: center; }
-        #lobby h1 { font-size: 80px; color: #ffcf00; margin-bottom: 30px; }
+        #lobby h1 { font-size: 90px; color: #ffcf00; margin: 0 0 40px 0; text-shadow: 0 0 20px rgba(0,0,0,1); }
+
+        /* 랭킹 UI 복구 */
+        #lobbyRanking {
+            position: absolute; bottom: 30px; left: 30px; width: 260px;
+            background: rgba(0, 0, 0, 0.7); padding: 20px; border-radius: 15px;
+            border: 1px solid rgba(255, 207, 0, 0.5); text-align: left;
+        }
+        #lobbyRanking h3 { margin: 0 0 10px 0; color: #ffcf00; border-bottom: 1px solid #444; }
+        #lobbyRanking ul { list-style: none; padding: 0; margin: 0; }
+        #lobbyRanking li { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 14px; }
+
+        /* 결과 창 */
+        #resultBoard {
+            display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9); padding: 40px; border-radius: 20px; border: 4px solid #ffcf00;
+            width: 400px; z-index: 20; text-align: center;
+        }
 
         .controls {
             width: 1000px; height: 220px; display: flex; justify-content: center; 
@@ -37,11 +54,8 @@
 
         #joystick-container {
             width: 160px; height: 160px; border-radius: 50%;
-            border: 3px solid rgba(255, 207, 0, 0.5);
-            background: rgba(255, 255, 255, 0.05);
-        
-            position: relative; touch-action: none;
-            cursor: pointer;
+            border: 3px solid rgba(255, 207, 0, 0.5); background: rgba(255, 255, 255, 0.05);
+            position: relative; touch-action: none; cursor: pointer;
         }
 
         #joystick-knob {
@@ -50,10 +64,13 @@
             box-shadow: 0 0 20px rgba(0,0,0,0.5); pointer-events: none;
         }
 
-        .start-btn, .retry-btn {
-            background: #ffcf00; border: none; padding: 20px 60px; cursor: pointer;
-            font-weight: bold; font-size: 30px; border-radius: 50px; color: #000;
+        .start-btn {
+            background: #ffcf00; border: none; padding: 25px 80px; cursor: pointer;
+            font-weight: bold; font-size: 35px; border-radius: 60px; color: #000;
+            transition: all 0.3s; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
         }
+        .start-btn:hover { transform: scale(1.1); background: #fff; }
+        .retry-btn { background: #ffcf00; border: none; padding: 15px 40px; cursor: pointer; font-weight: bold; border-radius: 10px; font-size: 20px; margin-top: 20px; }
     </style>
 </head>
 <body>
@@ -63,13 +80,18 @@
         <div id="scoreBoard">SCORE: 0</div>
 
         <div id="lobby">
-            <h1>융르지마세욧</h1>
+            <h1>융르지마세융</h1>
             <button class="start-btn" onclick="startGame()">START</button>
+            
+            <div id="lobbyRanking">
+                <h3>🏆 RANKING</h3>
+                <ul id="lobbyRankingList"><li>Loading...</li></ul>
+            </div>
         </div>
 
-        <div id="resultBoard" style="display:none;">
-            <h2 style="color: #ffcf00; font-size: 45px;">GAME OVER</h2>
-            <p id="finalScoreTxt" style="font-size: 24px;"></p>
+        <div id="resultBoard">
+            <h2 style="color: #ffcf00; font-size: 45px; margin: 0;">GAME OVER</h2>
+            <p id="finalScoreTxt" style="font-size: 24px; margin: 20px 0;"></p>
             <button class="retry-btn" onclick="location.reload()">RETRY</button>
         </div>
     </div>
@@ -92,7 +114,8 @@
         const bgm = document.getElementById('bgm');
         const hitSound = document.getElementById('hitSound');
 
-        const GAS_URL = "YOUR_GAS_URL_HERE";
+        // GAS URL 복구 (사용자의 URL을 입력하세요)
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbyM5kd7tzvllmBbZUtIcflTzLDWirV2a5QoyzKBY4q-G0vfoSkIgp8jw5xlQdX57OfEjA/exec";
 
         const imgs = { player: new Image(), normal: new Image(), homing: new Image(), giant: new Image(), teleport: new Image() };
         imgs.player.src = 'player.png';
@@ -108,50 +131,46 @@
         let enemies = [], score = 0, gameOver = false, isStarted = false, keys = {};
         const MAX_ENEMIES = 30;
 
-        // --- 조이스틱 변수 및 마우스 컨트롤 추가 ---
+        // --- 랭킹 함수 복구 ---
+        async function fetchRanking() {
+            try {
+                const res = await fetch(GAS_URL);
+                const data = await res.json();
+                document.getElementById('lobbyRankingList').innerHTML = data.slice(0, 10).map((it, idx) => 
+                    `<li><span>${idx+1}. ${it.name}</span><span>${it.score}</span></li>`
+                ).join('');
+            } catch(e) { document.getElementById('lobbyRankingList').innerHTML = "<li>Offline</li>"; }
+        }
+        fetchRanking();
+
+        // --- 조이스틱 로직 (마우스+터치 통합) ---
         let joystick = { x: 0, y: 0, active: false };
         const knob = document.getElementById('joystick-knob');
         const container = document.getElementById('joystick-container');
         const limit = 80; 
-        const JOYSTICK_SENSITIVITY = 0.5; // 조이스틱 속도 감도 (0~1 사이로 조절)
+        const JOYSTICK_SENSITIVITY = 0.5;
 
-        // 마우스/터치 통합 이벤트 처리 함수
         function moveJoystick(clientX, clientY) {
             const rect = container.getBoundingClientRect();
             const centerX = rect.left + rect.width / 2;
             const centerY = rect.top + rect.height / 2;
-            
             let dx = clientX - centerX;
             let dy = clientY - centerY;
             const distance = Math.sqrt(dx*dx + dy*dy);
-
-            if (distance > limit) {
-                dx = (dx / distance) * limit;
-                dy = (dy / distance) * limit;
-            }
-
-            // 감도를 곱해 입력값 세기 조절
+            if (distance > limit) { dx = (dx / distance) * limit; dy = (dy / distance) * limit; }
             joystick.x = (dx / limit) * JOYSTICK_SENSITIVITY;
             joystick.y = (dy / limit) * JOYSTICK_SENSITIVITY;
-
             knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
         }
 
-        // 터치 이벤트
         container.addEventListener('touchstart', (e) => { joystick.active = true; moveJoystick(e.touches[0].clientX, e.touches[0].clientY); });
         window.addEventListener('touchmove', (e) => { if (joystick.active) moveJoystick(e.touches[0].clientX, e.touches[0].clientY); });
         window.addEventListener('touchend', () => { joystick.active = false; resetJoystick(); });
-
-        // 마우스 이벤트 추가
         container.addEventListener('mousedown', (e) => { joystick.active = true; moveJoystick(e.clientX, e.clientY); });
         window.addEventListener('mousemove', (e) => { if (joystick.active) moveJoystick(e.clientX, e.clientY); });
         window.addEventListener('mouseup', () => { joystick.active = false; resetJoystick(); });
 
-        function resetJoystick() {
-            joystick.x = 0; joystick.y = 0;
-            knob.style.transform = `translate(-50%, -50%)`;
-        }
-        // ------------------------------------------
+        function resetJoystick() { joystick.x = 0; joystick.y = 0; knob.style.transform = `translate(-50%, -50%)`; }
 
         window.addEventListener('keydown', e => keys[e.code] = true);
         window.addEventListener('keyup', e => keys[e.code] = false);
@@ -193,27 +212,16 @@
 
         function update() {
             if (gameOver || !isStarted) return;
-
-            let moveX = 0;
-            let moveY = 0;
-
+            let moveX = 0, moveY = 0;
             if (keys['ArrowUp']) moveY -= 1;
             if (keys['ArrowDown']) moveY += 1;
             if (keys['ArrowLeft']) moveX -= 1;
             if (keys['ArrowRight']) moveX += 1;
-
-            if (joystick.active) {
-                moveX = joystick.x;
-                moveY = joystick.y;
-            }
+            if (joystick.active) { moveX = joystick.x; moveY = joystick.y; }
 
             const mag = Math.sqrt(moveX * moveX + moveY * moveY);
             if (mag > 0) {
-                // mag가 JOYSTICK_SENSITIVITY보다 클 때만 정규화하여 최대 속도 제한
-                if (mag > 1) {
-                    moveX /= mag;
-                    moveY /= mag;
-                }
+                if (mag > 1) { moveX /= mag; moveY /= mag; }
                 player.x += moveX * player.speed;
                 player.y += moveY * player.speed;
             }
@@ -232,13 +240,18 @@
                 }
                 e.x += e.vx; e.y += e.vy;
                 if (!player.invincible && dist < (player.radius + e.radius - 6)) {
-                    hitSound.currentTime = 0;
-                    hitSound.play();
-                    bgm.pause();
+                    hitSound.currentTime = 0; hitSound.play(); bgm.pause();
                     gameOver = true;
-                    document.getElementById('finalScoreTxt').innerText = `SCORE: ${Math.floor(score)}`;
+                    const finalScore = Math.floor(score);
+                    document.getElementById('finalScoreTxt').innerText = `SCORE: ${finalScore}`;
                     resultBoard.style.display = "block";
                     scoreBoard.style.display = "none";
+                    
+                    // 게임 종료 후 랭킹 등록 팝업 복구
+                    setTimeout(() => {
+                        const name = prompt("랭킹에 이름을 남겨주세요!", "익명");
+                        if(name) fetch(`${GAS_URL}?name=${encodeURIComponent(name)}&score=${finalScore}`);
+                    }, 100);
                     return;
                 }
                 if (e.x < -600 || e.x > 1600 || e.y < -600 || e.y > 1300) enemies.splice(i, 1);
@@ -261,7 +274,6 @@
                 if (e.type !== 'normal') { ctx.strokeStyle = e.color; ctx.lineWidth = 5; ctx.stroke(); }
                 ctx.restore();
             });
-
             ctx.save();
             if (player.invincible && Math.floor(Date.now()/100)%2===0) ctx.globalAlpha = 0.3;
             ctx.beginPath(); ctx.arc(player.x, player.y, player.radius, 0, Math.PI*2); ctx.clip();
@@ -270,7 +282,6 @@
                 ctx.drawImage(imgs.player, player.x - sz/2, player.y - sz/2, sz, sz);
             } else { ctx.fillStyle = '#ffcf00'; ctx.fill(); }
             ctx.restore();
-
             update();
             requestAnimationFrame(animate);
         }
