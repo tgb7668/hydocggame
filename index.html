@@ -199,12 +199,12 @@
             let type = 'normal', radius = 24, speed = baseSpeed + Math.random() * 1.5, color = '#ff4d4d';
 
             const rand = Math.random();
-            if (score >= 1500 && rand < 0.12) {
+            if (score >= 750 && rand < 0.12) {
                 type = 'teleport'; x = player.x + Math.cos(Math.random()*6)*400; y = player.y + Math.sin(Math.random()*6)*400;
                 speed = baseSpeed * 0.45; color = '#00ffff';
-            } else if (score >= 1000 && rand < 0.18) {
+            } else if (score >= 500 && rand < 0.18) {
                 type = 'giant'; radius = 55; speed = baseSpeed * 0.55; color = '#ff00ff';
-            } else if (score >= 500 && rand < 0.22) {
+            } else if (score >= 250 && rand < 0.22) {
                 type = 'homing'; speed = baseSpeed * 0.95; color = '#ffa500';
             }
             enemies.push({ x, y, vx: Math.cos(angle)*speed, vy: Math.sin(angle)*speed, radius, type, speed, color, isHomingActive: true });
